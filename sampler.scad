@@ -4,11 +4,11 @@ inch = 25.4;
 WIDTH = 6 * inch;
 DEPTH = 6 * inch;
 HEIGHT = 6 * inch;
-WALL_THICKNESS = 1;
+WALL_THICKNESS = 1/8 * inch;
 BLADE_THICKNESS = 2;
 FLANGE_DEPTH = 1 * inch;
 FLANGE_THICKNESS = inch / 8;
-SLOT_Z = inch / 4;
+SLOT_Z = inch;
 
 SCREW_OD = 6;
 NUT_OD = inch / 2;
@@ -17,6 +17,8 @@ NUT_OD = inch / 2;
 $fn = 256;
 
 module elbow(d, thickness = BLADE_THICKNESS, depth=WALL_THICKNESS ) {
+  translate([d + thickness, 0, 2 * d])
+  rotate([90, 180, 180])
   difference(){
     rotate_extrude(convexity = 10)
       translate([d, 0, 0])
@@ -28,61 +30,72 @@ module elbow(d, thickness = BLADE_THICKNESS, depth=WALL_THICKNESS ) {
   }
 }
 
-module slot(length, height = BLADE_THICKNESS, depth = WALL_THICKNESS, retract = 13) {
+module slot(length, height = BLADE_THICKNESS, depth = WALL_THICKNESS, retract = HEIGHT/2) {
   od = depth + height;
-  difference() {
-    union() {
-      cube([length, depth, height]);
-      cube([height, depth, retract]);
-    }
-    translate([-0.01, -0.01, -0.1])
-      cube([od + depth, depth - 0.02, od + depth]);
-  }
-  translate([od + depth, 0, 2 * height])
-  rotate([90, 180, 180])
-    elbow(height, depth=depth + 0.02);
+  elbow_dia = 5 * height;
+  elbow_size = elbow_dia + height - 0.01;
+  translate([elbow_size, 0, 0])
+    cube([length - elbow_dia, depth, height]);
+  translate([0, 0, elbow_dia + height])
+    cube([height, depth, retract - elbow_size]);
+  translate([0, 0, -elbow_dia+height])
+    elbow(elbow_dia, depth=depth, thickness=height);
 }
 
 module place_slots() {
-  translate([0, 0, SLOT_Z])
+  translate([-WALL_THICKNESS/2, 0, SLOT_Z])
   union() {
     translate([WIDTH, 0, 0])
     mirror([1, 0, 0])
       children();
-    children();
+    translate([WALL_THICKNESS, 0, 0])
+      children();
   }
 }
 
-module bore(height, dia=WALL_THICKNESS) {
-  linear_extrude(height)
-    circle(r = dia / 2);
+module bevel_extrude(height, delta) {
+  hull() {
+    translate([0, 0, height])
+    linear_extrude(0.01)
+    offset(delta=delta)
+      children();
+    linear_extrude(0.01)
+      children();
+  }
 }
 
-module bore_weave(height, dia=WALL_THICKNESS + 0.5, offset=WALL_THICKNESS / 2, seg_len = 30) {
-  num_segments = floor(height / seg_len);
-  last_seg = height - (seg_len * num_segments);
-  for (i = [0:num_segments]) {
-    off = i % 2 == 0 ? offset : -1 * offset;
-    translate([0, off, i * seg_len])
-      bore(seg_len, dia);
-    //through hole
-    if (i != 0) {
-      translate([0, offset / 2, i * seg_len - 0.5])
-        bore(1, dia = dia);
+module bore_top(dia=(3/16) * inch, length=inch, angle=35) {
+  guide_thickness = dia + 2 * WALL_THICKNESS;
+  translate([0, cos(angle)*length/2 - dia/2, 0])
+  rotate([angle, 0, 0])
+    linear_extrude(length + dia)
+      circle(r = dia / 2);
+}
+
+module bore_bottom(dia=(1/8) * inch, width=(3/4) * inch, height=SLOT_Z, thickness = WALL_THICKNESS, angle=25) {
+  translate([-width / 2, 0, -height/2])
+  difference() {
+    union() {
+      rotate([90, 0, 0])
+        bevel_extrude(thickness, -1)
+          square([width, height]);
+      translate([0, 0, 0])
+        cube([width, thickness, height]);
     }
+    translate([width/2, 2*thickness, height/2 + dia/2])
+    rotate([90, 0, angle])
+    linear_extrude(4 * thickness)
+      circle(r = dia / 2);
+    translate([width/2, 2*thickness, height/2 + dia/2])
+    rotate([90, 0, -angle])
+    linear_extrude(4 * thickness)
+      circle(r = dia / 2);
   }
 }
 
-module bearing(id=6, od=12, h=4, flange_d = 13.5, flange_h = 0.8) {
-  wiggle = 0.1;
-  linear_extrude(flange_h)
-    circle(r = (flange_d + wiggle) / 2);
-  linear_extrude(h)
-    circle(r = (od + wiggle) / 2);
-}
 
-module fin(height, depth = FLANGE_DEPTH / 2, thickness=WALL_THICKNESS) {
-  translate([0, -depth, 0])
+module fin(height, depth, thickness) {
+  translate([thickness/2, -depth, 0])
   rotate([0, 270, 0])
   linear_extrude(thickness)
   scale([1, depth / height, 1])
@@ -91,10 +104,21 @@ module fin(height, depth = FLANGE_DEPTH / 2, thickness=WALL_THICKNESS) {
     circle(r=height);
   }
 }
-module double_fin(height) {
-  fin(height);
+module double_fin(height, depth=FLANGE_DEPTH/2, thickness=WALL_THICKNESS/2) {
+  fin(height, depth, thickness);
   mirror([0, 1, 0])
-    fin(height);
+    fin(height, depth, thickness);
+}
+
+module place_fins(width, height, num_fins=6, padding=WALL_THICKNESS/2) {
+  dist = (width - 2 * padding) / (num_fins - 1);
+  for(x = [padding:dist:width-padding]) {
+    translate([x, 0, 0])
+    double_fin(height);
+  }
+  translate([width / 2 , 0, 0]) {
+    double_fin(height, thickness = dist);
+  }
 }
 
 module 770_mount(height = inch / 4, dia = 0.135 * inch) {
@@ -120,6 +144,31 @@ module flange(width, depth = FLANGE_DEPTH, withMotor = false, thickness=FLANGE_T
   }
 }
 
+module stake_profile(width, height, depth) {
+  polygon(points= [
+    [0, height],
+    [depth/2, 0],
+    [depth, height]
+  ]);
+}
+
+module stake(width, height=SLOT_Z, depth=WALL_THICKNESS) {
+  difference() {
+    translate([0, 0, 0])
+    rotate([90, 0, 90])
+    linear_extrude(width)
+      stake_profile(width, height, depth);
+    translate([depth/2, depth, height+0.01])
+    rotate([90, 180, 0])
+    linear_extrude(depth)
+      stake_profile(width, height, depth);
+    translate([width + depth/2, depth, height+0.01])
+    rotate([90, 180, 0])
+    linear_extrude(depth)
+      stake_profile(width, height, depth);
+  }
+}
+
 module wall(width, height, thickness = WALL_THICKNESS, withMotor = false) {
   screw_pocket_width = 0.75 * inch;
   screw_pocket_depth = 0.85 * inch;
@@ -128,28 +177,29 @@ module wall(width, height, thickness = WALL_THICKNESS, withMotor = false) {
 
   difference() {
     union() {
-      cube([width, thickness, height]);
-      translate([width / 4, 0, SLOT_Z])
-        double_fin(height - SLOT_Z);
-      translate([3 * width / 4, 0, SLOT_Z])
-        double_fin(height - SLOT_Z);
-      translate([-FLANGE_DEPTH / 2, -FLANGE_DEPTH / 2, height])
+      translate([0, 0, SLOT_Z])
+        cube([width, thickness, height]);
+      translate([0, 0, -0.01])
+      stake(width, height=SLOT_Z);
+      translate([0, 0, SLOT_Z])
+      place_fins(width, height) {
+        double_fin();
+      }
+      translate([-FLANGE_DEPTH / 2, -FLANGE_DEPTH / 2, height + SLOT_Z])
         flange(width + FLANGE_DEPTH, withMotor=withMotor);
     }
     if (withMotor) {
       place_slots() {
         translate([thickness, -0.01, 0])
-          slot(width / 2 - 2 *thickness, depth=thickness + 0.02);
+          slot(width / 2, depth=thickness + 0.02);
       }
-      translate([width / 2, thickness / 2, SLOT_Z])
-        union(){
-          bore_weave(height - SLOT_Z);
-          translate([-2, 0, BLADE_THICKNESS / 2])
-          rotate([0, 90, 0])
-            bore(4);
-        }
-
+      translate([width / 2, -thickness, height - 1 * inch])
+        bore_top();
     }
+  }
+  if (withMotor) {
+    translate([width / 2, 0, SLOT_Z])
+      bore_bottom();
   }
 }
 
