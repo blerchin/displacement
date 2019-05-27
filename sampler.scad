@@ -72,25 +72,31 @@ module bore_top(dia=(3/16) * inch, length=inch, angle=35) {
       circle(r = dia / 2);
 }
 
-module bore_bottom(dia=(1/8) * inch, width=(3/4) * inch, height=SLOT_Z, thickness = WALL_THICKNESS, angle=25) {
-  translate([-width / 2, 0, -height/2])
-  difference() {
-    union() {
-      rotate([90, 0, 0])
-        bevel_extrude(thickness, -3)
-          square([width, height]);
-      translate([0, 0, 0])
-        cube([width, thickness, height]);
-    }
-    translate([width/2, 2*thickness, height/2 + dia/2])
-    rotate([90, 0, angle])
-    linear_extrude(4 * thickness)
-      circle(r = dia / 2);
-    translate([width/2, 2*thickness, height/2 + dia/2])
+module bore_bottom(dia=(1/8) * inch, width=(3/4) * inch, thickness = WALL_THICKNESS, angle=25) {
+  translate([-width/2, 0, 0])
+  union() {
+    translate([(7/8) * width, 2*thickness, 0])
     rotate([90, 0, -angle])
     linear_extrude(4 * thickness)
       circle(r = dia / 2);
+    translate([width/8, 2*thickness, 0])
+    rotate([90, 0, angle])
+    linear_extrude(4 * thickness)
+      circle(r = dia / 2);
   }
+}
+
+module place_rollers(padding=2) {
+  translate([WALL_THICKNESS + padding, 0, 0])
+    children();
+  translate([WIDTH - padding - WALL_THICKNESS, 0, 0])
+    children();
+}
+
+module bore_roller(dia=3) {
+  translate([0, -0.01, 0])
+  rotate([-90, 0, 0])
+    cylinder(r=dia/2, h=WIDTH + 0.02);
 }
 
 
@@ -189,17 +195,13 @@ module wall(width, height, thickness = WALL_THICKNESS, withMotor = false) {
         flange(width + FLANGE_DEPTH, withMotor=withMotor);
     }
     if (withMotor) {
-      place_slots() {
-        translate([thickness, -0.01, 0])
-          slot(width / 2, depth=thickness + 0.02);
+      translate([width / 2, 0, SLOT_Z])
+        bore_bottom();
+      translate([0, 0, SLOT_Z])
+        place_rollers(){
+          bore_roller();
       }
-      translate([width / 2, -thickness, height - 1 * inch])
-        bore_top();
     }
-  }
-  if (withMotor) {
-    translate([width / 2, 0, SLOT_Z])
-      bore_bottom();
   }
 }
 
