@@ -77,7 +77,7 @@ module bore_bottom(dia=(1/8) * inch, width=(3/4) * inch, height=SLOT_Z, thicknes
   difference() {
     union() {
       rotate([90, 0, 0])
-        bevel_extrude(thickness, -1)
+        bevel_extrude(thickness, -3)
           square([width, height]);
       translate([0, 0, 0])
         cube([width, thickness, height]);
