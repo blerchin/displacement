@@ -8,13 +8,14 @@ WALL_THICKNESS = 1/8 * inch;
 BLADE_THICKNESS = 2;
 FLANGE_DEPTH = 1 * inch;
 FLANGE_THICKNESS = inch / 8;
-SLOT_Z = inch;
+SLOT_Z = 2 * inch;
+ROLLER_DIA = 3;
 
 SCREW_OD = 6;
 NUT_OD = inch / 2;
 
 
-$fn = 256;
+$fn = 64;
 
 module elbow(d, thickness = BLADE_THICKNESS, depth=WALL_THICKNESS ) {
   translate([d + thickness, 0, 2 * d])
@@ -86,14 +87,7 @@ module bore_bottom(dia=(1/8) * inch, width=(3/4) * inch, thickness = WALL_THICKN
   }
 }
 
-module place_rollers(padding=2) {
-  translate([WALL_THICKNESS + padding, 0, 0])
-    children();
-  translate([WIDTH - padding - WALL_THICKNESS, 0, 0])
-    children();
-}
-
-module bore_roller(dia=3) {
+module bore_roller(dia=ROLLER_DIA) {
   translate([0, -0.01, 0])
   rotate([-90, 0, 0])
     cylinder(r=dia/2, h=WIDTH + 0.02);
@@ -197,10 +191,16 @@ module wall(width, height, thickness = WALL_THICKNESS, withMotor = false) {
     if (withMotor) {
       translate([width / 2, 0, SLOT_Z])
         bore_bottom();
-      translate([0, 0, SLOT_Z])
-        place_rollers(){
+      translate([WALL_THICKNESS, 0, SLOT_Z])
           bore_roller();
-      }
+      translate([WIDTH - WALL_THICKNESS, 0, SLOT_Z])
+          bore_roller();
+    } else {
+      translate([0, ROLLER_DIA, SLOT_Z])
+      rotate([0, 0, -90])
+      scale([1, 1, 2])
+        bore_roller(dia=ROLLER_DIA);
+
     }
   }
 }
