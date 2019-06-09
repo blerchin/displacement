@@ -15,7 +15,7 @@ SCREW_OD = 6;
 NUT_OD = inch / 2;
 
 
-$fn = 64;
+$fn = 256;
 
 module elbow(d, thickness = BLADE_THICKNESS, depth=WALL_THICKNESS ) {
   translate([d + thickness, 0, 2 * d])
@@ -84,6 +84,37 @@ module bore_bottom(dia=(1/8) * inch, width=(3/4) * inch, thickness = WALL_THICKN
     rotate([90, 0, angle])
     linear_extrude(4 * thickness)
       circle(r = dia / 2);
+  }
+}
+
+module chamfer(dia) {
+  r = dia/2;
+  difference() {
+    translate([r*cos(225), r*sin(225)])
+    difference() {
+      square([r, r]);
+      circle(r=r);
+    }
+    translate([0, -r])
+    square([r, r]);
+  }
+}
+
+module roller_inset(dia=ROLLER_DIA + 0.5, chamfer_dia=ROLLER_DIA/2, padding = 0.25, angle = 90) {
+  r = dia/2;
+  translate([0, -0.01, 0])
+  rotate([-90, 0, 0])
+  linear_extrude(WIDTH + 0.02)
+  translate([-r * cos(180 - angle) - chamfer_dia/8, 0])
+  union() {
+    circle(r=r);
+    translate([r * cos(180 - angle), r * sin(180 - angle)])
+    rotate([0, 0, 270])
+      chamfer(chamfer_dia);
+    translate([r * cos(180 + angle), r * sin(180 + angle)])
+    mirror([0, 1, 0])
+    rotate([0, 0, 270])
+      chamfer(chamfer_dia);
   }
 }
 
@@ -191,15 +222,14 @@ module wall(width, height, thickness = WALL_THICKNESS, withMotor = false) {
     if (withMotor) {
       translate([width / 2, 0, SLOT_Z])
         bore_bottom();
-      translate([WALL_THICKNESS, 0, SLOT_Z])
+      translate([thickness, 0, SLOT_Z])
           bore_roller();
-      translate([WIDTH - WALL_THICKNESS, 0, SLOT_Z])
+      translate([WIDTH - thickness, 0, SLOT_Z])
           bore_roller();
     } else {
-      translate([0, ROLLER_DIA, SLOT_Z])
-      rotate([0, 0, -90])
-      scale([1, 1, 2])
-        bore_roller(dia=ROLLER_DIA);
+      translate([width, thickness, SLOT_Z])
+      rotate([0, 0, 90])
+        roller_inset();
 
     }
   }

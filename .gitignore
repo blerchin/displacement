@@ -1,2 +1,10 @@
 .DS_Store
 texput.log
+.pio
+.pioenvs
+.piolibdeps
+.clang_complete
+.gcc-flags.json
+.DS_Store
+credentials.h
+node_modules
