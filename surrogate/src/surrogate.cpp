@@ -15,6 +15,7 @@
 #define PIN_FONA_TX 8
 #define PIN_FONA_RST 4
 #define PIN_FONA_KEY 5
+#define PIN_VBAT A9
 
 #define FONA_ENABLED 1
 
@@ -23,7 +24,7 @@
 #include <SoftwareSerial.h>
 SoftwareSerial fonaSS = SoftwareSerial(PIN_FONA_TX, PIN_FONA_RX);
 SoftwareSerial *fonaSerial = &fonaSS;
-bool fonaOn = false; 
+bool fonaOn = false;
 
 Adafruit_FONA fona = Adafruit_FONA(PIN_FONA_RST);
 Adafruit_MQTT_FONA mqtt(&fona, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
@@ -35,7 +36,7 @@ DHT *dht = new DHT(PIN_DHT, DHT22);
 
 uint32_t lastUpload = millis();
 
-uint16_t batterymV[10];
+char batteryV[10];
 char humidity[10];
 char degreesF[10];
 char light[10];
@@ -46,9 +47,11 @@ void readSensors() {
   itoa(analogRead(PIN_PHOTOCELL), light, 10);
   dtostrf(dht->readTemperature(true), 6, 2, degreesF);
   dtostrf(dht->readHumidity(), 6, 2, humidity);
-  if(fonaOn) {
-    fona.getBattVoltage(batterymV);
-  }
+  float measuredvbat = analogRead(PIN_VBAT);
+  //measuredvbat *= 2;    // we divided by 2, so multiply back
+  measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
+  measuredvbat /= 1024;
+  dtostrf(measuredvbat, 6, 2, batteryV);
 }
 
 void toggleFONA(bool turnOn) {
@@ -92,9 +95,9 @@ char* getSensorCSV() {
   snprintf(
     csvstring,
     256,
-    "%lu,%d,%s,%s,%s",
+    "%lu,%s,%s,%s,%s",
     millis(),
-    batterymV,
+    batteryV,
     degreesF,
     humidity,
     light
@@ -128,11 +131,11 @@ void loop(void)
   delay(1000);
 
   if (millis() - lastUpload > UPLOAD_INTERVAL) {
-    readSensors();
-    Serial.println("DID READ SENSORS");
     #if FONA_ENABLED
       startFONA();
       Serial.println("FONA RUNNING");
+      readSensors();
+      Serial.println("DID READ SENSORS");
       while(fona.getNetworkStatus() != 1) {
         delay(1000);
         Serial.println("waiting for network");
