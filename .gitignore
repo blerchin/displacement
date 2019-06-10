@@ -8,3 +8,6 @@ texput.log
 .DS_Store
 credentials.h
 node_modules
+venv
+.env
+__pycache__
