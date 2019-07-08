@@ -1,4 +1,5 @@
 use <scad-utils/morphology.scad>
+use <helpers.scad>
 
 inch = 25.4;
 WIDTH = 6 * inch;
@@ -149,17 +150,6 @@ module place_fins(width, height, num_fins=6, padding=WALL_THICKNESS/2) {
   }
   translate([width / 2 , 0, 0]) {
     double_fin(height, thickness = dist);
-  }
-}
-
-module 770_mount(height = inch / 4, dia = 0.135 * inch) {
-  dist = 0.770 * inch;
-  translate([0, 0, -height / 2])
-  linear_extrude(height)
-  for(a = [45:90:315]) {
-    rotate(a)
-    translate([0, dist / 2, 0])
-      circle(r = dia / 2);
   }
 }
 
