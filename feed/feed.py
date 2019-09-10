@@ -9,14 +9,14 @@ load_dotenv()
 
 
 def convert_lux(v):
-    return floor(80 - 3.24 * exp(-0.00938 * float(v)))
+    return floor(int(v)/10)
 
 def format_entry(payload):
     data = payload.split(',')
     degreesF = data[2]
     humidity = data[3]
     light = convert_lux(data[4])
-    now = strftime('%d %b, %Y %H:%m')
+    now = strftime('%d %b, %Y %H:%M')
     out = '{}\n'.format(now)
     out += 'from 34.073960,-118.454797\n'
     out += 'Ambient Temp: {} F\n'.format(degreesF)
